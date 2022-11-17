@@ -4,6 +4,10 @@ const { Worker, isMainThread } = require('worker_threads');
 const pathToResizeWorker = path.resolve(__dirname, 'resizeWorker.js');
 const pathToMonochromeWorker = path.resolve(__dirname, 'monochromeWorker.js');
 
+const uploadPathResolver = (filename) => { 
+    return path.resolve(__dirname, '../uploads', filename);
+};
+
 const imageProcessor = (filename) => { 
     const sourcePath = uploadPathResolver(filename);
     const resizedDestination = uploadPathResolver('resized-' + filename);
@@ -17,6 +21,12 @@ const imageProcessor = (filename) => {
             try
             {
                 const resizeWorker = new Worker(pathToResizeWorker, { workerData: { source: sourcePath , destination: resizedDestination}});
+                resizeWorker.on('message', (message) => {
+                    resizeWorkerFinished = true;
+                    if (monochromeWorkerFinished) {
+                        resolve('resizeWorker finished processing');
+                    }
+                });
                 resizeWorker.on((error) => {
                     reject(new Error(error.message));
                 });
@@ -26,6 +36,12 @@ const imageProcessor = (filename) => {
                 });
 
                 const monochromeWorker = new Worker(pathToMonochromeWorker, { workerData: { source: sourcePath, destination: monochromeDestination }});
+                monochromeWorker.on('message', (message) => {
+                    monochromeWorkerFinished = true;
+                    if (resizeWorkerFinished) {
+                        resolve('monochromeWorker finished processing');
+                    }
+                });
                 monochromeWorker.on((error) => {
                     reject(new Error(error.message));
                 });
@@ -36,12 +52,12 @@ const imageProcessor = (filename) => {
             }
             catch (error)
             {
-                return reject(new Error('not on main thread'));
+                reject(error);
             }
         }
         else  
         {
-            return resolve();
+            return reject(new Error('not on main thread'));
         }
     });
 };
