@@ -62,8 +62,4 @@ const imageProcessor = (filename) => {
     });
 };
 
-const uploadPathResolver = (filename) => {
-    path.resolve(__dirname, '../uploads', filename);
-};
-
 module.exports = imageProcessor;
